@@ -22,7 +22,7 @@ class Paper(BaseModel):
     venue: str = Field("", description="컨퍼런스/저널")
     citations: int = Field(0, description="인용 수")
     url: str = Field("", description="논문 URL")
-    abstract: str = Field("", description="초록")
+    abstract: Optional[str] = Field(None, description="초록")
     doi: Optional[str] = Field(None, description="DOI")
     pdf_url: Optional[str] = Field(None, description="PDF URL")
 

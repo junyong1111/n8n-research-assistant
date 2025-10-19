@@ -174,7 +174,7 @@ class SemanticScholarService:
             "venue": paper.get("venue", ""),
             "citations": paper.get("citationCount", 0),
             "url": paper.get("url", ""),
-            "abstract": paper.get("abstract", ""),
+            "abstract": paper.get("abstract") or None,  # None을 명시적으로 허용
             "doi": doi,
             "pdf_url": pdf_url,
         }
