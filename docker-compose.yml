@@ -1,0 +1,42 @@
+services:
+  # n8n Workflow Automation
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      GENERIC_TIMEZONE: "Asia/Seoul"
+      N8N_SECURE_COOKIE: "false"
+      TZ: "Asia/Seoul"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      N8N_NODES_ALLOW_BUILTIN_MODULES: "*"
+      N8N_NODES_EXCLUDE_BUILTIN_MODULES: ""
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks: [appnet]
+
+  # FastAPI Backend
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: research-assistant-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    networks: [appnet]
+    depends_on:
+      - n8n
+
+networks:
+  appnet:
+    driver: bridge
+
+volumes:
+  n8n_data:
