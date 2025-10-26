@@ -7,6 +7,10 @@ import requests
 from app.utils.logger import get_logger, log_execution_time
 from app.config import settings
 import time
+import json
+import os
+from pathlib import Path
+from datetime import datetime
 
 logger = get_logger()
 
@@ -42,6 +46,11 @@ class SemanticScholarService:
             logger.info("✅ API Key로 초기화 (5,000 req/5min) 🚀")
         else:
             logger.info("✅ 무료 버전으로 초기화 (100 req/5min) ⚠️")
+
+        # 캐시 및 PDF 저장 경로 설정
+        self.cache_file = Path("data/papers_cache.json")
+        self.pdf_dir = Path("data/papers_pdf")
+        self._ensure_directories()
 
     @log_execution_time
     def search_papers(
@@ -328,41 +337,65 @@ class SemanticScholarService:
             # 2. Seed 논문 변환
             seed_paper = self._convert_paper_format(seed_data)
 
-            # 3. References 처리
+            # 3. References 처리 (상세 정보 + PDF 다운로드)
             references = []
             total_references = 0
             if include_references and "references" in seed_data:
                 raw_references = seed_data["references"]
                 total_references = len(raw_references)
 
-                for ref in raw_references[:max_references]:
+                logger.info(f"🔄 References 상세 정보 조회 중... (최대 {max_references}개)")
+                for idx, ref in enumerate(raw_references[:max_references], 1):
                     try:
                         if ref.get("paperId"):
-                            converted = self._convert_citation_item(ref)
-                            references.append(converted)
+                            # 상세 정보 조회 (캐싱 + PDF 다운로드)
+                            detailed_paper = self.get_paper_details(ref["paperId"], download_pdf=True)
+                            if detailed_paper:
+                                references.append(detailed_paper)
+                                logger.info(f"  [{idx}/{max_references}] ✅ {detailed_paper['title'][:50]}...")
+                            else:
+                                # 실패 시 기본 정보라도 저장
+                                converted = self._convert_citation_item(ref)
+                                references.append(converted)
+                                logger.warning(f"  [{idx}/{max_references}] ⚠️ 기본 정보만 저장")
+
+                            # Rate Limit 방지
+                            time.sleep(0.5)
                     except Exception as e:
-                        logger.warning(f"Reference 변환 실패: {e}")
+                        logger.warning(f"Reference 처리 실패: {e}")
                         continue
 
-                logger.info(f"✅ References: {len(references)}/{total_references}개")
+                logger.info(f"✅ References: {len(references)}/{total_references}개 완료")
 
-            # 4. Citations 처리
+            # 4. Citations 처리 (상세 정보 + PDF 다운로드)
             citations = []
             total_citations = 0
             if include_citations and "citations" in seed_data:
                 raw_citations = seed_data["citations"]
                 total_citations = len(raw_citations)
 
-                for cit in raw_citations[:max_citations]:
+                logger.info(f"🔄 Citations 상세 정보 조회 중... (최대 {max_citations}개)")
+                for idx, cit in enumerate(raw_citations[:max_citations], 1):
                     try:
                         if cit.get("paperId"):
-                            converted = self._convert_citation_item(cit)
-                            citations.append(converted)
+                            # 상세 정보 조회 (캐싱 + PDF 다운로드)
+                            detailed_paper = self.get_paper_details(cit["paperId"], download_pdf=True)
+                            if detailed_paper:
+                                citations.append(detailed_paper)
+                                logger.info(f"  [{idx}/{max_citations}] ✅ {detailed_paper['title'][:50]}...")
+                            else:
+                                # 실패 시 기본 정보라도 저장
+                                converted = self._convert_citation_item(cit)
+                                citations.append(converted)
+                                logger.warning(f"  [{idx}/{max_citations}] ⚠️ 기본 정보만 저장")
+
+                            # Rate Limit 방지
+                            time.sleep(0.5)
                     except Exception as e:
-                        logger.warning(f"Citation 변환 실패: {e}")
+                        logger.warning(f"Citation 처리 실패: {e}")
                         continue
 
-                logger.info(f"✅ Citations: {len(citations)}/{total_citations}개")
+                logger.info(f"✅ Citations: {len(citations)}/{total_citations}개 완료")
 
             logger.info(f"🎉 Citation Network 구축 완료: Seed 1개 + Ref {len(references)}개 + Cit {len(citations)}개")
 
@@ -400,4 +433,138 @@ class SemanticScholarService:
             "doi": doi,
             "pdf_url": None,  # Citation API에서는 제공 안됨
         }
+
+    def _ensure_directories(self):
+        """필요한 디렉토리 생성"""
+        self.pdf_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+    def _load_cache(self) -> Dict:
+        """캐시 파일 로드"""
+        if not self.cache_file.exists():
+            return {"papers": {}, "last_updated": None, "cache_info": {"total_papers": 0, "total_pdfs": 0}}
+
+        try:
+            with open(self.cache_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"캐시 로드 실패: {e}")
+            return {"papers": {}, "last_updated": None, "cache_info": {"total_papers": 0, "total_pdfs": 0}}
+
+    def _save_cache(self, cache: Dict):
+        """캐시 파일 저장"""
+        try:
+            cache["last_updated"] = datetime.now().isoformat()
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"캐시 저장 실패: {e}")
+
+    def get_paper_details(self, paper_id: str, download_pdf: bool = True) -> Optional[Dict]:
+        """
+        논문 상세 정보 조회 및 PDF 다운로드 (캐싱 포함)
+
+        Args:
+            paper_id: Semantic Scholar Paper ID
+            download_pdf: PDF 다운로드 여부
+
+        Returns:
+            논문 상세 정보 (캐시 또는 API 조회)
+        """
+        try:
+            # 1. 캐시 확인
+            cache = self._load_cache()
+            if paper_id in cache["papers"]:
+                logger.info(f"📦 캐시에서 로드: {paper_id}")
+                return cache["papers"][paper_id]
+
+            # 2. API 조회
+            logger.info(f"🔍 API 조회 시작: {paper_id}")
+            fields = [
+                "paperId", "title", "authors", "year", "venue",
+                "citationCount", "url", "abstract", "externalIds",
+                "openAccessPdf"
+            ]
+
+            url = f"{self.BASE_URL}/paper/{paper_id}"
+            params = {"fields": ",".join(fields)}
+
+            # Rate Limit 대응 재시도
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self.session.get(url, params=params, timeout=30)
+
+                    if response.status_code == 429:
+                        wait_time = (attempt + 1) * 5
+                        logger.warning(f"⏳ Rate Limit. {wait_time}초 대기... ({attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                        continue
+
+                    response.raise_for_status()
+                    break
+
+                except requests.exceptions.HTTPError as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    logger.warning(f"재시도 중... ({attempt + 1}/{max_retries})")
+                    time.sleep(3)
+
+            paper_data = response.json()
+            paper = self._convert_paper_format(paper_data)
+
+            # 3. PDF 다운로드
+            if download_pdf and paper.get("pdf_url"):
+                pdf_path = self._download_pdf(paper_id, paper["pdf_url"])
+                if pdf_path:
+                    paper["local_pdf_path"] = str(pdf_path)
+                    cache["cache_info"]["total_pdfs"] = cache["cache_info"].get("total_pdfs", 0) + 1
+
+            # 4. 캐시 저장
+            cache["papers"][paper_id] = paper
+            cache["cache_info"]["total_papers"] = len(cache["papers"])
+            self._save_cache(cache)
+
+            logger.info(f"✅ 논문 조회 완료: {paper['title'][:60]}...")
+            return paper
+
+        except Exception as e:
+            logger.error(f"❌ 논문 상세 조회 실패 ({paper_id}): {e}")
+            return None
+
+    def _download_pdf(self, paper_id: str, pdf_url: str) -> Optional[Path]:
+        """
+        PDF 다운로드
+
+        Args:
+            paper_id: 논문 ID
+            pdf_url: PDF URL
+
+        Returns:
+            저장된 PDF 파일 경로
+        """
+        try:
+            pdf_path = self.pdf_dir / f"{paper_id}.pdf"
+
+            # 이미 존재하면 스킵
+            if pdf_path.exists():
+                logger.info(f"📄 PDF 이미 존재: {pdf_path.name}")
+                return pdf_path
+
+            logger.info(f"📥 PDF 다운로드 시작: {pdf_url}")
+            response = self.session.get(pdf_url, timeout=60, stream=True)
+            response.raise_for_status()
+
+            # PDF 저장
+            with open(pdf_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            file_size = pdf_path.stat().st_size / (1024 * 1024)  # MB
+            logger.info(f"✅ PDF 다운로드 완료: {pdf_path.name} ({file_size:.2f} MB)")
+            return pdf_path
+
+        except Exception as e:
+            logger.error(f"❌ PDF 다운로드 실패 ({paper_id}): {e}")
+            return None
 

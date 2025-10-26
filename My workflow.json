@@ -1,77 +1,57 @@
 {
-  "name": "Research Assistant - Knowledge-Based Workflow",
+  "name": "My workflow 2",
   "nodes": [
     {
       "parameters": {},
+      "id": "945c5678-f229-4b31-8534-94b4b1315822",
+      "name": "Start Research",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [-800, 300],
-      "id": "trigger-node",
-      "name": "Start Research"
+      "position": [
+        -1760,
+        -816
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "topic-name",
-              "name": "topic_name",
-              "value": "GNN Recommendation System",
-              "type": "string"
-            },
-            {
-              "id": "keyword",
+              "id": "1",
               "name": "keyword",
               "value": "gnn recommendation system",
               "type": "string"
             },
             {
-              "id": "knowledge-state",
-              "name": "knowledge_state",
-              "value": "beginner",
-              "type": "string"
-            },
-            {
-              "id": "year-from",
+              "id": "2",
               "name": "year_from",
               "value": 2024,
               "type": "number"
             },
             {
-              "id": "year-to",
+              "id": "3",
               "name": "year_to",
               "value": 2025,
               "type": "number"
             },
             {
-              "id": "limit",
+              "id": "4",
               "name": "limit",
-              "value": 10,
+              "value": 2,
               "type": "number"
             }
           ]
-        }
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [-600, 300],
-      "id": "input-params",
-      "name": "Input Parameters"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://api:8000/api/v1/knowledge/topics",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, knowledge_state: $('Input Parameters').item.json.knowledge_state }) }}",
+        },
         "options": {}
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-400, 300],
-      "id": "create-topic",
-      "name": "Create or Get Topic"
+      "id": "6c0e7a82-deab-4ba6-af38-ee372dfeee15",
+      "name": "Input Parameters",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1536,
+        -816
+      ]
     },
     {
       "parameters": {
@@ -79,58 +59,407 @@
         "url": "http://api:8000/api/v1/search/papers",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ keyword: $('Input Parameters').item.json.keyword, year_from: $('Input Parameters').item.json.year_from, year_to: $('Input Parameters').item.json.year_to, limit: $('Input Parameters').item.json.limit }) }}",
+        "jsonBody": "={{ JSON.stringify({ keyword: $json.keyword, year_from: $json.year_from, year_to: $json.year_to, limit: $json.limit }) }}",
         "options": {}
       },
+      "id": "c89d5abf-cc59-4932-b438-2abc820f2b8a",
+      "name": "Search Papers",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [-200, 300],
-      "id": "search-papers",
-      "name": "Search Papers"
+      "typeVersion": 4,
+      "position": [
+        -1312,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "papers",
+        "options": {}
+      },
+      "id": "1fc3dfb5-8336-44f7-aa82-d4b24b1e27fd",
+      "name": "Split Papers",
+      "type": "n8n-nodes-base.itemLists",
+      "typeVersion": 3,
+      "position": [
+        -1104,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/papers/{{ $json.id }}/try-semantic-scholar",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "223bb116-165c-4f91-8132-2963c447ef49",
+      "name": "[1] Try Semantic Scholar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -880,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.pdf_found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.detail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "notExists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fcdd7fe2-c38d-40fb-a52f-e6fe99a01b47",
+      "name": "PDF Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-arxiv",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "1fbd4ea8-3e6b-4e82-a26c-c7f6f8bdb512",
+      "name": "[2] Try arXiv",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -656,
+        -608
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.pdf_found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.detail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "notExists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "08518443-5289-4524-a6ff-49318ef250ec",
+      "name": "PDF Found (arXiv)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        -608
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-unpaywall",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "ed40fe95-a5f2-4841-a27a-97bb258ee7b3",
+      "name": "[3] Try Unpaywall",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -432,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.pdf_found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.detail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "notExists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "034a313b-3dda-4191-ab72-1b4216b7c6a4",
+      "name": "PDF Found (Unpaywall)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        -416
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-google-scholar",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "9694e528-6576-47c0-909a-17c31df05d88",
+      "name": "[4] Try Google Scholar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -224,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.pdf_found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.detail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "notExists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "140ff177-82d8-45cf-a65a-c2c39bef59cb",
+      "name": "PDF Found (Scholar)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-google-search",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fb408b73-3ef5-4765-b2a2-47aaedcfc7f5",
+      "name": "[5] Try Google Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $json.pdf_found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2",
+              "leftValue": "={{ $json.detail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "notExists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bff737d5-7f7c-4104-800e-0a8fcaf96d6e",
+      "name": "PDF Found (Google)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/pdf-text",
+        "options": {}
+      },
+      "id": "a47e472a-bca6-42d6-84c0-24bbf7caa63b",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -432,
+        -928
+      ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://api:8000/api/v1/search/citation-network",
+        "url": "http://api:8000/api/v1/papers/summary",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ paper_id: $json.papers[0].id, include_references: true, include_citations: true, max_references: 20, max_citations: 20 }) }}",
+        "jsonBody": "={{ JSON.stringify({ paper_id: $json.paper_id, summary: $json.clean_json }) }}",
         "options": {}
       },
+      "id": "fb606aff-13b8-442a-b1fe-564b08454946",
+      "name": "Save Summary",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [0, 300],
-      "id": "build-citation-network",
-      "name": "Build Citation Network"
+      "typeVersion": 4,
+      "position": [
+        112,
+        -928
+      ]
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=# Research Analysis Task\n\nYou are an AI research assistant analyzing academic papers for a researcher.\n\n## Input Data\n**Topic**: {{ $json.topic_name }}\n**Knowledge State**: {{ $json.knowledge_state }}\n\n**Papers Found**: {{ $json.papers.length }}\n**Citation Network**:\n- Seed Paper: {{ $json.seed_paper.title }}\n- References: {{ $json.references.length }}\n- Citations: {{ $json.citations.length }}\n\n## Your Task\n\n1. **Categorize Papers**:\n   - Foundation Papers (뿌리 논문): 가장 영향력이 크고 오래된 기초 논문\n   - Core Papers: 주요 방법론을 제시한 핵심 논문\n   - Recent Papers: 최신 연구 (2024-2025)\n\n2. **Analyze Each Paper**:\n   For each paper, extract:\n   - Korean Summary (3 sentences)\n   - Key Contributions (3 bullet points)\n   - Methodology Used\n   - Limitations\n   - Dataset Used\n\n3. **Research Gap Analysis**:\n   - Common problems addressed\n   - Unsolved problems\n   - Recent trends (2024-2025)\n   - Potential research directions\n\n4. **Reading Order**:\n   Suggest optimal reading order based on knowledge_state:\n   - If \"beginner\": Start from Foundation → Core → Recent\n   - If \"experienced\": Focus on Recent papers only\n\n## Output Format (JSON)\n```json\n{\n  \"categorized_papers\": {\n    \"foundation\": [{\"id\", \"title\", \"year\", \"reason\"}],\n    \"core\": [{\"id\", \"title\", \"year\", \"reason\"}],\n    \"recent\": [{\"id\", \"title\", \"year\", \"reason\"}]\n  },\n  \"paper_analyses\": [\n    {\n      \"paper_id\": \"\",\n      \"title\": \"\",\n      \"summary_ko\": \"\",\n      \"contributions\": [],\n      \"methodology\": \"\",\n      \"limitations\": \"\",\n      \"dataset\": \"\"\n    }\n  ],\n  \"research_gap\": {\n    \"common_problems\": [],\n    \"unsolved_problems\": [],\n    \"recent_trends\": [],\n    \"potential_directions\": []\n  },\n  \"reading_order\": [\"paper_id_1\", \"paper_id_2\", ...]\n}\n```\n\n**IMPORTANT**: Provide ONLY valid JSON, no markdown, no explanations.",
-        "options": {
-          "systemMessage": "You are a world-class AI research assistant specializing in academic paper analysis. You help researchers understand complex topics by categorizing papers, analyzing research gaps, and suggesting optimal reading strategies."
-        }
+        "options": {}
       },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 2.2,
-      "position": [200, 300],
-      "id": "research-agent",
-      "name": "Research Analysis Agent"
+      "id": "0fcc5d80-893d-4b3c-8156-c2cbbfb493c5",
+      "name": "Give Up (No PDF)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        224,
+        192
+      ]
     },
     {
       "parameters": {
         "model": {
           "__rl": true,
+          "value": "gpt-5-mini-2025-08-07",
           "mode": "list",
-          "value": "gpt-4o-mini"
+          "cachedResultName": "gpt-5-mini-2025-08-07"
         },
-        "options": {}
+        "options": {
+          "timeout": 60000
+        }
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [200, 480],
-      "id": "openai-model",
-      "name": "OpenAI Model",
+      "position": [
+        -256,
+        -816
+      ],
+      "id": "55c4c488-e3b2-4a4d-bc1f-81cdc026e8c3",
+      "name": "OpenAI Chat Model",
       "credentials": {
         "openAiApi": {
           "id": "fgL5dNA01B3rLtYt",
@@ -140,112 +469,282 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "http://api:8000/api/v1/knowledge/topics/papers",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, papers: JSON.parse($json.output).categorized_papers.foundation, category: \"foundation\" }) }}",
-        "options": {}
+        "promptType": "define",
+        "text": "=You are an expert research paper analyst.\n\nAnalyze this paper and provide a JSON summary:\n\nPaper ID: {{ $json.paper_id }}\nText (first 20k chars): {{ $json.text.substring(0, 20000) }}\n\nProvide ONLY valid JSON in this format (no markdown, no code blocks):\n{\n  \"paper_id\": \"{{ $json.paper_id }}\",\n  \"summary_ko\": \"3-sentence Korean summary\",\n  \"key_contributions\": [\"contribution 1\", \"contribution 2\", \"contribution 3\"],\n  \"methodology\": \"brief methodology description\",\n  \"main_results\": \"key results\",\n  \"limitations\": \"limitations\",\n  \"dataset\": \"dataset used\"\n}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a research paper analyst. Always respond with valid JSON only, no markdown formatting."
+            }
+          ]
+        },
+        "batching": {}
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [400, 200],
-      "id": "save-foundation",
-      "name": "Save Foundation Papers"
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -256,
+        -928
+      ],
+      "id": "5a6ea22d-0c03-41fb-8a42-5ca1100b56ec",
+      "name": "Basic LLM Chain"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "http://api:8000/api/v1/knowledge/topics/papers",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, papers: JSON.parse($json.output).categorized_papers.core, category: \"core\" }) }}",
-        "options": {}
+        "jsCode": "const llmOutput = $input.item.json.output || $input.item.json.text || $input.item.json.response || '';\nconst cleanJson = llmOutput.replace(/```json/g, '').replace(/```/g, '').trim();\nconst paperId = $('Extract PDF Text').item.json.paper_id;\n\nreturn {\n  clean_json: cleanJson,\n  paper_id: paperId\n};"
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [400, 300],
-      "id": "save-core",
-      "name": "Save Core Papers"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "http://api:8000/api/v1/knowledge/topics/papers",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, papers: JSON.parse($json.output).categorized_papers.recent, category: \"recent\" }) }}",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [400, 400],
-      "id": "save-recent",
-      "name": "Save Recent Papers"
-    },
-    {
-      "parameters": {
-        "operation": "toFile",
-        "fileName": "={{ $('Input Parameters').item.json.topic_name.replace(/ /g, '_') }}_research_report.json",
-        "options": {
-          "append": false
-        }
-      },
-      "type": "n8n-nodes-base.convertToFile",
-      "typeVersion": 1.1,
-      "position": [600, 300],
-      "id": "save-report",
-      "name": "Generate Report"
+      "id": "clean-json-node",
+      "name": "Clean JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-112, -928]
     }
   ],
   "pinData": {},
   "connections": {
     "Start Research": {
-      "main": [[{"node": "Input Parameters", "type": "main", "index": 0}]]
-    },
-    "Input Parameters": {
-      "main": [[{"node": "Create or Get Topic", "type": "main", "index": 0}]]
-    },
-    "Create or Get Topic": {
-      "main": [[{"node": "Search Papers", "type": "main", "index": 0}]]
-    },
-    "Search Papers": {
-      "main": [[{"node": "Build Citation Network", "type": "main", "index": 0}]]
-    },
-    "Build Citation Network": {
-      "main": [[{"node": "Research Analysis Agent", "type": "main", "index": 0}]]
-    },
-    "Research Analysis Agent": {
       "main": [
         [
-          {"node": "Save Foundation Papers", "type": "main", "index": 0},
-          {"node": "Save Core Papers", "type": "main", "index": 0},
-          {"node": "Save Recent Papers", "type": "main", "index": 0}
+          {
+            "node": "Input Parameters",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Save Foundation Papers": {
-      "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+    "Input Parameters": {
+      "main": [
+        [
+          {
+            "node": "Search Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Save Core Papers": {
-      "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+    "Search Papers": {
+      "main": [
+        [
+          {
+            "node": "Split Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Save Recent Papers": {
-      "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+    "Split Papers": {
+      "main": [
+        [
+          {
+            "node": "[1] Try Semantic Scholar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "OpenAI Model": {
-      "ai_languageModel": [[{"node": "Research Analysis Agent", "type": "ai_languageModel", "index": 0}]]
+    "[1] Try Semantic Scholar": {
+      "main": [
+        [
+          {
+            "node": "PDF Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Found?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[2] Try arXiv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[2] Try arXiv": {
+      "main": [
+        [
+          {
+            "node": "PDF Found (arXiv)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Found (arXiv)?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[3] Try Unpaywall",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[3] Try Unpaywall": {
+      "main": [
+        [
+          {
+            "node": "PDF Found (Unpaywall)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Found (Unpaywall)?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[4] Try Google Scholar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[4] Try Google Scholar": {
+      "main": [
+        [
+          {
+            "node": "PDF Found (Scholar)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Found (Scholar)?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "[5] Try Google Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[5] Try Google Search": {
+      "main": [
+        [
+          {
+            "node": "PDF Found (Google)?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Found (Google)?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Give Up (No PDF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Clean JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean JSON": {
+      "main": [
+        [
+          {
+            "node": "Save Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "updated-version",
+  "versionId": "d02cc09a-24ea-468d-991a-34b38bac36cd",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "eed024bb5d204d44b22cd35ec2dd369a6de7f278aa734e916f52ff1ff75e4e62"
   },
-  "id": "6LJLxV15O5Au1pbW",
+  "id": "axZEL0n0zxIWOS5V",
   "tags": []
 }

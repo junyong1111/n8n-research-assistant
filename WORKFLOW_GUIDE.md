@@ -1,288 +1,336 @@
-# 🚀 Research Assistant Workflow Guide
+# n8n 워크플로우 가이드 - 연구원 사고 방식
 
-## 개요
+## 🧠 핵심 컨셉
 
-이 워크플로우는 **지식 상태 기반 논문 리서치 자동화 시스템**입니다.
+이 워크플로우는 **실제 연구원이 논문을 찾는 과정**을 자동화합니다.
 
-### 핵심 기능
-- ✅ 지식 상태 추적 (Beginner → Experienced)
-- ✅ Citation Network 자동 구축 (References + Citations)
-- ✅ AI 기반 논문 분류 (Foundation/Core/Recent)
-- ✅ Research Gap 자동 분석
-- ✅ 읽기 순서 자동 생성
-- ✅ 중복 논문 자동 필터링
+```
+연구원의 실제 사고:
+"논문 찾았다 → PDF 있나? → 없네 → arXiv 찾아보자 → 없네
+→ DOI로 Unpaywall 시도 → 없네 → Google Scholar 검색해보자
+→ 없네 → Google 검색으로 마지막 시도 → 있다! 다운로드!"
+```
+
+이 과정을 **n8n 노드로 시각화**하여 각 단계를 명확히 볼 수 있습니다!
 
 ---
 
-## 워크플로우 구조
+## 📊 워크플로우 구조
 
+### 1️⃣ 논문 검색 단계
 ```
-[Start]
+Start Research
   ↓
-[Input Parameters] - 주제, 키워드, 지식 상태 입력
+Input Parameters (키워드, 연도, 개수)
   ↓
-[Check Topic Exists] - 주제가 이미 존재하는지 확인
+Search Papers (Semantic Scholar API)
   ↓
-[Topic Exists?] - 분기
-  ├─ NO → [Create New Topic] - 새 주제 생성
-  └─ YES → [Search Papers] - 바로 검색
-        ↓
-[Build Citation Network] - Seed 논문의 References + Citations 가져오기
+Split Papers (각 논문 개별 처리)
+```
+
+### 2️⃣ PDF 찾기 단계 (연구원 사고 방식!)
+
+각 논문마다 **5단계 폭포수 검색**을 수행합니다:
+
+```
+[1] Try Semantic Scholar
+  ↓ (PDF 없으면)
+[2] Try arXiv
+  ↓ (PDF 없으면)
+[3] Try Unpaywall (DOI 기반)
+  ↓ (PDF 없으면)
+[4] Try Google Scholar
+  ↓ (PDF 없으면)
+[5] Try Google Search
+  ↓ (PDF 없으면)
+Give Up (No PDF) ❌
+```
+
+**각 단계마다 If 노드**로 성공 여부를 확인하고, 실패하면 다음 소스를 시도합니다!
+
+### 3️⃣ 분석 단계 (PDF 찾았을 때만)
+
+```
+Extract PDF Text
   ↓
-[Research Analysis Agent] - AI가 논문 분류 & 분석
+Call OpenAI (GPT-4o-mini)
   ↓
-[Save Papers] - Foundation/Core/Recent로 분류 저장
-  ↓
-[Generate Report] - JSON 리포트 생성
-```
-
----
-
-## 사용 방법
-
-### 1. 입력 파라미터 설정
-
-워크플로우를 실행하기 전 `Input Parameters` 노드에서 다음을 설정하세요:
-
-```javascript
-{
-  "topic_name": "GNN Recommendation System",  // 연구 주제
-  "keyword": "gnn recommendation system",     // 검색 키워드
-  "knowledge_state": "beginner",              // beginner/intermediate/experienced
-  "year_from": 2024,                          // 검색 시작 연도
-  "year_to": 2025,                            // 검색 종료 연도
-  "limit": 10                                 // 검색할 논문 수
-}
-```
-
-### 2. 지식 상태 (Knowledge State)
-
-#### Beginner (초심자)
-- **동작**: 뿌리 논문(Foundation)부터 최신 논문까지 전부 탐색
-- **읽기 순서**: Foundation → Core → Recent
-- **예시**: 새로운 주제를 처음 시작할 때
-
-#### Intermediate (중급자)
-- **동작**: Core 논문부터 탐색
-- **읽기 순서**: Core → Recent
-- **예시**: 기초는 알고 있을 때
-
-#### Experienced (숙련자)
-- **동작**: Recent 논문만 탐색 (최신 트렌드 추적)
-- **읽기 순서**: Recent only
-- **예시**: 이미 주제를 잘 알고 있을 때
-
-### 3. 자동 상태 전환
-
-시스템이 자동으로 지식 상태를 업데이트합니다:
-
-- **진행률 80% 달성** → Beginner → Intermediate
-- **진행률 95% 달성** → Intermediate → Experienced
-
----
-
-## API 엔드포인트
-
-### 논문 검색
-```bash
-POST http://api:8000/api/v1/search/papers
-{
-  "keyword": "gnn recommendation system",
-  "year_from": 2024,
-  "year_to": 2025,
-  "limit": 10
-}
-```
-
-### Citation Network 구축
-```bash
-POST http://api:8000/api/v1/search/citation-network
-{
-  "paper_id": "abc123",
-  "include_references": true,
-  "include_citations": true,
-  "max_references": 20,
-  "max_citations": 20
-}
-```
-
-### 주제 생성
-```bash
-POST http://api:8000/api/v1/knowledge/topics
-{
-  "topic_name": "GNN Recommendation System",
-  "knowledge_state": "beginner"
-}
-```
-
-### 주제 조회
-```bash
-GET http://api:8000/api/v1/knowledge/topics/GNN%20Recommendation%20System
-```
-
-### 논문 추가
-```bash
-POST http://api:8000/api/v1/knowledge/topics/papers
-{
-  "topic_name": "GNN Recommendation System",
-  "papers": [...],
-  "category": "foundation"  // foundation/core/recent
-}
-```
-
-### 논문 읽음 표시
-```bash
-POST http://api:8000/api/v1/knowledge/topics/mark-read
-{
-  "topic_name": "GNN Recommendation System",
-  "paper_id": "abc123",
-  "category": "foundation"
-}
+Save Summary
 ```
 
 ---
 
-## Agent 프롬프트
+## 🔧 API 엔드포인트 (개별 단계)
 
-Research Analysis Agent는 다음 작업을 수행합니다:
+각 PDF 검색 단계는 **독립적인 API 엔드포인트**로 구현되어 있습니다:
 
-1. **논문 분류**
-   - Foundation: 뿌리 논문 (예: Attention, GCN)
-   - Core: 핵심 방법론 (예: LightGCN)
-   - Recent: 최신 연구 (2024-2025)
+| 단계 | 엔드포인트 | 설명 |
+|-----|-----------|------|
+| 1 | `GET /papers/{id}/try-semantic-scholar` | Semantic Scholar PDF 시도 |
+| 2 | `GET /papers/{id}/try-arxiv` | arXiv PDF 시도 |
+| 3 | `GET /papers/{id}/try-unpaywall` | Unpaywall (DOI) 시도 |
+| 4 | `GET /papers/{id}/try-google-scholar` | Google Scholar 시도 |
+| 5 | `GET /papers/{id}/try-google-search` | Google 검색 시도 |
 
-2. **논문별 분석**
-   - 한글 요약 (3문장)
-   - 주요 기여도 (3개)
-   - 방법론
-   - 한계점
-   - 사용 데이터셋
-
-3. **Research Gap 분석**
-   - 공통 문제점
-   - 미해결 문제
-   - 최근 트렌드
-   - 잠재적 연구 방향
-
-4. **읽기 순서 제안**
-   - Knowledge state에 따라 최적 순서 제시
-
----
-
-## 출력 결과
-
-### JSON 리포트 예시
-
+**응답 형식** (공통):
 ```json
 {
-  "categorized_papers": {
-    "foundation": [
-      {
-        "id": "attention2017",
-        "title": "Attention Is All You Need",
-        "year": 2017,
-        "reason": "Self-attention 메커니즘의 기초"
-      }
-    ],
-    "core": [
-      {
-        "id": "lightgcn2020",
-        "title": "LightGCN",
-        "year": 2020,
-        "reason": "GCN 추천 시스템의 핵심 방법론"
-      }
-    ],
-    "recent": [...]
-  },
-  "paper_analyses": [...],
-  "research_gap": {
-    "unsolved_problems": [
-      "Cold-start 문제 완전 해결 방법 없음",
-      "대규모 그래프 실시간 추천 어려움"
-    ],
-    "potential_directions": [
-      "Meta-learning으로 cold-start 해결",
-      "경량화 + 분산 학습"
-    ]
-  },
-  "reading_order": ["attention2017", "gcn2018", "lightgcn2020", ...]
+  "paper_id": "3e3f9411776a36572cd021f0f0f992029b9a6fd5",
+  "pdf_found": true,
+  "pdf_url": "https://arxiv.org/pdf/2402.12994",
+  "source": "semantic_scholar",
+  "local_path": "data/papers_pdf/3e3f9411776a36572cd021f0f0f992029b9a6fd5.pdf"
+}
+```
+
+**실패 시** (404):
+```json
+{
+  "detail": {
+    "error": "PDF_NOT_FOUND",
+    "message": "Semantic Scholar에 PDF 없음"
+  }
 }
 ```
 
 ---
 
-## 데이터 저장 위치
+## 🎯 n8n 노드 설정
 
-### JSON 파일
+### [1] Try Semantic Scholar
+
+**HTTP Request 노드**
+- Method: `GET`
+- URL: `http://api:8000/api/v1/papers/{{ $json.id }}/try-semantic-scholar`
+- Options → Response:
+  - ✅ **Never Error** (404도 정상 처리)
+
+### PDF Found? (If 노드)
+
+**조건**:
+- `{{ $json.pdf_found }}` == `true`
+
+**분기**:
+- ✅ True → `Extract PDF Text`
+- ❌ False → `[2] Try arXiv`
+
+### [2] Try arXiv
+
+**HTTP Request 노드**
+- Method: `GET`
+- URL: `http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-arxiv`
+  - ⚠️ **주의**: `Split Papers` 노드의 원본 데이터 참조!
+- Options → Response:
+  - ✅ **Never Error**
+
+### PDF Found (arXiv)? (If 노드)
+
+**조건**:
+- `{{ $json.pdf_found }}` == `true`
+
+**분기**:
+- ✅ True → `Extract PDF Text`
+- ❌ False → `[3] Try Unpaywall`
+
+### [3] Try Unpaywall
+
+**HTTP Request 노드**
+- Method: `GET`
+- URL: `http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-unpaywall`
+- Options → Response:
+  - ✅ **Never Error**
+
+### [4] Try Google Scholar
+
+**HTTP Request 노드**
+- Method: `GET`
+- URL: `http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-google-scholar`
+- Options → Response:
+  - ✅ **Never Error**
+
+### [5] Try Google Search
+
+**HTTP Request 노드**
+- Method: `GET`
+- URL: `http://api:8000/api/v1/papers/{{ $('Split Papers').item.json.id }}/try-google-search`
+- Options → Response:
+  - ✅ **Never Error**
+
+### Give Up (No PDF)
+
+**Set 노드**
+- `status`: `"pdf_not_found_anywhere"`
+- `paper_id`: `{{ $('Split Papers').item.json.id }}`
+
+---
+
+## 🚀 실행 방법
+
+### 1. n8n 워크플로우 임포트
+
+1. n8n UI 접속: http://localhost:5678
+2. **Workflows** → **Import from File**
+3. `My workflow.json` 선택
+4. **Import** 클릭
+
+### 2. OpenAI API Key 설정
+
+1. **Credentials** → **Add Credential**
+2. **OpenAI** 선택
+3. API Key 입력
+4. **Call OpenAI** 노드에서 Credential 선택
+
+### 3. 파라미터 설정
+
+**Input Parameters 노드**에서 수정:
+- `keyword`: 검색 키워드 (예: "gnn recommendation system")
+- `year_from`: 시작 연도 (예: 2024)
+- `year_to`: 종료 연도 (예: 2025)
+- `limit`: 논문 개수 (예: 2)
+
+### 4. 실행
+
+1. **Start Research** 노드 클릭
+2. **Execute Workflow** 클릭
+3. 각 노드의 실행 결과를 시각적으로 확인!
+
+---
+
+## 📈 실행 결과 확인
+
+### 성공 케이스
+
 ```
-data/research_knowledge.json
+[1] Try Semantic Scholar ✅
+  → PDF Found? ✅
+  → Extract PDF Text ✅
+  → Call OpenAI ✅
+  → Save Summary ✅
 ```
 
-### 리포트 파일
+### 폭포수 검색 케이스
+
 ```
-GNN_Recommendation_System_research_report.json
+[1] Try Semantic Scholar ❌ (404)
+  → [2] Try arXiv ❌ (404)
+  → [3] Try Unpaywall ❌ (404)
+  → [4] Try Google Scholar ✅
+  → Extract PDF Text ✅
+  → Call OpenAI ✅
+  → Save Summary ✅
+```
+
+### 완전 실패 케이스
+
+```
+[1] Try Semantic Scholar ❌
+  → [2] Try arXiv ❌
+  → [3] Try Unpaywall ❌
+  → [4] Try Google Scholar ❌
+  → [5] Try Google Search ❌
+  → Give Up (No PDF) 🚫
 ```
 
 ---
 
-## 사용 시나리오
+## 💾 저장 위치
 
-### Week 1: 새 주제 시작 (Beginner)
-```
-1. topic_name: "GNN Recommendation System"
-2. knowledge_state: "beginner"
-3. 실행 → 10개 논문 + Citation Network (41개)
-4. AI 분석 → Foundation 3개, Core 5개, Recent 2개
-5. 추천 읽기 순서: Foundation부터 시작
-```
-
-### Week 2: 기초 완료 (Intermediate)
-```
-1. 동일 주제로 재실행
-2. 시스템이 자동으로 중복 제거 → 새 논문 2개만 추가
-3. 읽은 논문 표시 → 진행률 80% → Intermediate로 전환
-```
-
-### Week 5: 전문가 모드 (Experienced)
-```
-1. knowledge_state: "experienced"
-2. 실행 → Recent 논문만 추적
-3. 기존 Core 논문과 비교 분석
-```
+- **PDF 파일**: `data/papers_pdf/{paper_id}.pdf`
+- **논문 요약**: `data/paper_summaries/{paper_id}.json`
+- **캐시**: `data/papers_cache.json`
 
 ---
 
-## 트러블슈팅
+## 🔍 디버깅 팁
 
-### API 연결 실패
+### 1. API 로그 확인
 ```bash
-# Docker 컨테이너 확인
-docker ps
-
-# API 헬스 체크
-curl http://localhost:8000/api/v1/health
+docker logs research-assistant-api --tail 50
 ```
 
-### OpenAI API 에러
-- n8n의 OpenAI 자격증명 확인
-- API 키가 유효한지 확인
+### 2. 특정 논문 PDF 수동 테스트
+```bash
+# Semantic Scholar 시도
+curl "http://localhost:8000/api/v1/papers/{paper_id}/try-semantic-scholar"
 
-### Citation Network 에러
-- Seed 논문 ID가 올바른지 확인
-- Semantic Scholar API Rate Limit (무료: 100 req/5min)
+# arXiv 시도
+curl "http://localhost:8000/api/v1/papers/{paper_id}/try-arxiv"
+```
 
----
+### 3. n8n 노드 데이터 확인
 
-## 다음 단계
-
-1. **Notion 연동**: 분석 결과를 Notion Database에 자동 저장
-2. **Slack 알림**: 새 논문 발견 시 알림
-3. **GitHub 코드 분석**: 논문의 재현 가능성 자동 평가
-4. **PDF 다운로드**: Open Access 논문 자동 다운로드
+각 노드 클릭 → **Output** 탭에서 JSON 데이터 확인
 
 ---
 
-## 문의
+## 🎨 워크플로우 시각화
 
-이슈가 있으면 GitHub Issues에 등록해주세요!
+```
+Start → Input → Search → Split
+                            ↓
+                    [1] Semantic Scholar
+                            ↓
+                      PDF Found? ─── Yes → Extract → OpenAI → Save
+                            ↓ No
+                       [2] arXiv
+                            ↓
+                      PDF Found? ─── Yes → Extract → OpenAI → Save
+                            ↓ No
+                     [3] Unpaywall
+                            ↓
+                      PDF Found? ─── Yes → Extract → OpenAI → Save
+                            ↓ No
+                   [4] Google Scholar
+                            ↓
+                      PDF Found? ─── Yes → Extract → OpenAI → Save
+                            ↓ No
+                   [5] Google Search
+                            ↓
+                      PDF Found? ─── Yes → Extract → OpenAI → Save
+                            ↓ No
+                      Give Up 🚫
+```
 
+---
+
+## ⚡ 성능 최적화
+
+### 1. 로컬 캐시 활용
+
+이미 다운로드한 PDF는 다시 다운로드하지 않습니다!
+
+### 2. Rate Limit 대응
+
+- Semantic Scholar: 5,000 req/5min (API Key)
+- Google Scholar/Search: 요청 간격 자동 조절
+
+### 3. 병렬 처리
+
+`Split Papers` 노드가 각 논문을 병렬로 처리합니다!
+
+---
+
+## 🆘 문제 해결
+
+### Q: "PDF_NOT_FOUND" 에러가 계속 나와요
+**A**: 모든 소스를 시도했지만 PDF를 찾지 못한 경우입니다. 수동으로 PDF를 `data/papers_pdf/{paper_id}.pdf`에 추가하세요.
+
+### Q: Google Scholar/Search가 작동하지 않아요
+**A**: 봇 차단일 수 있습니다. 잠시 후 다시 시도하거나, VPN을 사용하세요.
+
+### Q: OpenAI 요금이 걱정돼요
+**A**: `gpt-4o-mini` 모델은 매우 저렴합니다 (~$0.0001/논문). 하루 100편 분석해도 $0.01 미만!
+
+---
+
+## 📚 추가 자료
+
+- [n8n 공식 문서](https://docs.n8n.io)
+- [Semantic Scholar API](https://api.semanticscholar.org)
+- [OpenAI API 문서](https://platform.openai.com/docs)
+
+---
+
+**만든이**: AI Research Assistant
+**버전**: Researcher Mindset v1.0
+**날짜**: 2025-10-26

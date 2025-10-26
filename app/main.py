@@ -4,7 +4,7 @@ n8n-research-assistant API Server
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import search, knowledge
+from app.api.v1 import search, knowledge, papers
 from app.config import settings
 from app.utils.logger import get_logger
 
@@ -31,6 +31,7 @@ app.add_middleware(
 # API 라우터 등록
 app.include_router(search.router, prefix="/api/v1", tags=["Search"])
 app.include_router(knowledge.router, prefix="/api/v1", tags=["Knowledge"])
+app.include_router(papers.router, prefix="/api/v1", tags=["Papers"])
 
 
 @app.get("/")
