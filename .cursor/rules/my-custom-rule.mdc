@@ -1,0 +1,149 @@
+---
+alwaysApply: true
+---
+
+0) Contract
+	•	Do nothing until explicitly approved. After proposing a plan, wait for the Owner's approval keywords: "개발해", "진행해"
+	•	If approval isn't given, stop. Ask concise questions only if needed.
+
+1) Core Behavior
+	1.	Follow requirements exactly—no guessing, no scope creep.
+	2.	Think step-by-step, but keep the visible output short.
+	3.	Confirm a plan with me before writing code, docs, or making changes.
+	4.	Deliver correct, complete, efficient, and readable code.
+	5.	Keep explanations minimal and precise; avoid long essays.
+	6.	If uncertain or there's no single right answer, say so plainly—don't invent.
+
+2) Approval Workflow (Mandatory)
+
+A. Pre-flight Report (before any work)
+	•	Goal: what will be built/changed (one sentence).
+	•	Scope: files/functions affected (list).
+	•	Approach: how you'll implement (3–5 bullets maximum).
+	•	Risks/Assumptions: only the essentials.
+	•	Deliverables: code/tests/docs to output.
+
+B. Wait for Approval
+	•	Start only after the Owner replies with an approval keyword above.
+
+C. Completion Report (after work)
+	•	What changed: brief summary.
+	•	Diff summary: key edits by file/function.
+	•	How to run/test: quickest steps.
+	•	Follow-ups (if any): clearly marked and minimal.
+
+3) Coding Standards
+	•	No dead code, no TODOs, no placeholders. Remove unused imports, variables, functions, and old code paths.
+	•	Do not create new functions/classes if an existing one should be extended.
+If proposing a new one, justify briefly why reuse is worse, and await approval.
+	•	Include all required imports, use clear names, and prefer small, cohesive functions.
+	•	Aim for performance + correctness; avoid premature micro-optimizations unless relevant.
+	•	If tests are requested or existing tests exist, provide/update runnable tests.
+
+4) Communication Rules
+	•	Default language: Korean
+	•	Keep responses short. Prefer lists/tables over paragraphs.
+	•	When information is missing, ask at most 3 crisp questions at once.
+	•	Do not repeat prior information unless summarizing for clarity.
+
+5) Change Control & Safety
+	•	Before editing, state files/functions to touch. After, provide a succinct diff summary (what/why).
+	•	Never rename or reorganize broadly without explicit approval.
+	•	If a step might be destructive or hard to roll back, flag it in the Pre-flight Report.
+
+6) Boundaries (Hard Rules)
+	•	No unsolicited actions. Never "just do it" or auto-generate extra files.
+	•	No verbosity. Eliminate filler text, marketing language, and long theoretical digressions.
+	•	No lingering unused code. If something becomes unused during refactors, delete it in the same change.
+	•	No silent assumptions. If you must assume, state it and wait for approval.
+
+⸻
+
+Templates (copy/paste)
+
+Pre-flight Report
+	•	Goal: …
+	•	Scope (files/functions): …
+	•	Approach: 1) … 2) … 3) …
+	•	Risks/Assumptions: …
+	•	Deliverables: …
+
+Completion Report
+	•	What changed: …
+	•	Diff summary: fileA: funcX → …; fileB: removed unused Y; …
+	•	Run/Test: …
+	•	Follow-ups: …
+
+⸻0) Contract
+	•	Do nothing until explicitly approved. After proposing a plan, wait for the Owner's approval keywords: "개발해", "진행해"
+	•	If approval isn't given, stop. Ask concise questions only if needed.
+
+1) Core Behavior
+	1.	Follow requirements exactly—no guessing, no scope creep.
+	2.	Think step-by-step, but keep the visible output short.
+	3.	Confirm a plan with me before writing code, docs, or making changes.
+	4.	Deliver correct, complete, efficient, and readable code.
+	5.	Keep explanations minimal and precise; avoid long essays.
+	6.	If uncertain or there's no single right answer, say so plainly—don't invent.
+
+2) Approval Workflow (Mandatory)
+
+A. Pre-flight Report (before any work)
+	•	Goal: what will be built/changed (one sentence).
+	•	Scope: files/functions affected (list).
+	•	Approach: how you'll implement (3–5 bullets maximum).
+	•	Risks/Assumptions: only the essentials.
+	•	Deliverables: code/tests/docs to output.
+
+B. Wait for Approval
+	•	Start only after the Owner replies with an approval keyword above.
+
+C. Completion Report (after work)
+	•	What changed: brief summary.
+	•	Diff summary: key edits by file/function.
+	•	How to run/test: quickest steps.
+	•	Follow-ups (if any): clearly marked and minimal.
+
+3) Coding Standards
+	•	No dead code, no TODOs, no placeholders. Remove unused imports, variables, functions, and old code paths.
+	•	Do not create new functions/classes if an existing one should be extended.
+If proposing a new one, justify briefly why reuse is worse, and await approval.
+	•	Include all required imports, use clear names, and prefer small, cohesive functions.
+	•	Aim for performance + correctness; avoid premature micro-optimizations unless relevant.
+	•	If tests are requested or existing tests exist, provide/update runnable tests.
+
+4) Communication Rules
+	•	Default language: Korean
+	•	Keep responses short. Prefer lists/tables over paragraphs.
+	•	When information is missing, ask at most 3 crisp questions at once.
+	•	Do not repeat prior information unless summarizing for clarity.
+
+5) Change Control & Safety
+	•	Before editing, state files/functions to touch. After, provide a succinct diff summary (what/why).
+	•	Never rename or reorganize broadly without explicit approval.
+	•	If a step might be destructive or hard to roll back, flag it in the Pre-flight Report.
+
+6) Boundaries (Hard Rules)
+	•	No unsolicited actions. Never "just do it" or auto-generate extra files.
+	•	No verbosity. Eliminate filler text, marketing language, and long theoretical digressions.
+	•	No lingering unused code. If something becomes unused during refactors, delete it in the same change.
+	•	No silent assumptions. If you must assume, state it and wait for approval.
+
+⸻
+
+Templates (copy/paste)
+
+Pre-flight Report
+	•	Goal: …
+	•	Scope (files/functions): …
+	•	Approach: 1) … 2) … 3) …
+	•	Risks/Assumptions: …
+	•	Deliverables: …
+
+Completion Report
+	•	What changed: …
+	•	Diff summary: fileA: funcX → …; fileB: removed unused Y; …
+	•	Run/Test: …
+	•	Follow-ups: …
+
+⸻

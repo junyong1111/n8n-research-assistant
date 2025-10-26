@@ -1,0 +1,251 @@
+{
+  "name": "Research Assistant - Knowledge-Based Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-800, 300],
+      "id": "trigger-node",
+      "name": "Start Research"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "topic-name",
+              "name": "topic_name",
+              "value": "GNN Recommendation System",
+              "type": "string"
+            },
+            {
+              "id": "keyword",
+              "name": "keyword",
+              "value": "gnn recommendation system",
+              "type": "string"
+            },
+            {
+              "id": "knowledge-state",
+              "name": "knowledge_state",
+              "value": "beginner",
+              "type": "string"
+            },
+            {
+              "id": "year-from",
+              "name": "year_from",
+              "value": 2024,
+              "type": "number"
+            },
+            {
+              "id": "year-to",
+              "name": "year_to",
+              "value": 2025,
+              "type": "number"
+            },
+            {
+              "id": "limit",
+              "name": "limit",
+              "value": 10,
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-600, 300],
+      "id": "input-params",
+      "name": "Input Parameters"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/knowledge/topics",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, knowledge_state: $('Input Parameters').item.json.knowledge_state }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-400, 300],
+      "id": "create-topic",
+      "name": "Create or Get Topic"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/search/papers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ keyword: $('Input Parameters').item.json.keyword, year_from: $('Input Parameters').item.json.year_from, year_to: $('Input Parameters').item.json.year_to, limit: $('Input Parameters').item.json.limit }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-200, 300],
+      "id": "search-papers",
+      "name": "Search Papers"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/search/citation-network",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ paper_id: $json.papers[0].id, include_references: true, include_citations: true, max_references: 20, max_citations: 20 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [0, 300],
+      "id": "build-citation-network",
+      "name": "Build Citation Network"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# Research Analysis Task\n\nYou are an AI research assistant analyzing academic papers for a researcher.\n\n## Input Data\n**Topic**: {{ $json.topic_name }}\n**Knowledge State**: {{ $json.knowledge_state }}\n\n**Papers Found**: {{ $json.papers.length }}\n**Citation Network**:\n- Seed Paper: {{ $json.seed_paper.title }}\n- References: {{ $json.references.length }}\n- Citations: {{ $json.citations.length }}\n\n## Your Task\n\n1. **Categorize Papers**:\n   - Foundation Papers (뿌리 논문): 가장 영향력이 크고 오래된 기초 논문\n   - Core Papers: 주요 방법론을 제시한 핵심 논문\n   - Recent Papers: 최신 연구 (2024-2025)\n\n2. **Analyze Each Paper**:\n   For each paper, extract:\n   - Korean Summary (3 sentences)\n   - Key Contributions (3 bullet points)\n   - Methodology Used\n   - Limitations\n   - Dataset Used\n\n3. **Research Gap Analysis**:\n   - Common problems addressed\n   - Unsolved problems\n   - Recent trends (2024-2025)\n   - Potential research directions\n\n4. **Reading Order**:\n   Suggest optimal reading order based on knowledge_state:\n   - If \"beginner\": Start from Foundation → Core → Recent\n   - If \"experienced\": Focus on Recent papers only\n\n## Output Format (JSON)\n```json\n{\n  \"categorized_papers\": {\n    \"foundation\": [{\"id\", \"title\", \"year\", \"reason\"}],\n    \"core\": [{\"id\", \"title\", \"year\", \"reason\"}],\n    \"recent\": [{\"id\", \"title\", \"year\", \"reason\"}]\n  },\n  \"paper_analyses\": [\n    {\n      \"paper_id\": \"\",\n      \"title\": \"\",\n      \"summary_ko\": \"\",\n      \"contributions\": [],\n      \"methodology\": \"\",\n      \"limitations\": \"\",\n      \"dataset\": \"\"\n    }\n  ],\n  \"research_gap\": {\n    \"common_problems\": [],\n    \"unsolved_problems\": [],\n    \"recent_trends\": [],\n    \"potential_directions\": []\n  },\n  \"reading_order\": [\"paper_id_1\", \"paper_id_2\", ...]\n}\n```\n\n**IMPORTANT**: Provide ONLY valid JSON, no markdown, no explanations.",
+        "options": {
+          "systemMessage": "You are a world-class AI research assistant specializing in academic paper analysis. You help researchers understand complex topics by categorizing papers, analyzing research gaps, and suggesting optimal reading strategies."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [200, 300],
+      "id": "research-agent",
+      "name": "Research Analysis Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [200, 480],
+      "id": "openai-model",
+      "name": "OpenAI Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "fgL5dNA01B3rLtYt",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/knowledge/topics/papers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, papers: JSON.parse($json.output).categorized_papers.foundation, category: \"foundation\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 200],
+      "id": "save-foundation",
+      "name": "Save Foundation Papers"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/knowledge/topics/papers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, papers: JSON.parse($json.output).categorized_papers.core, category: \"core\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 300],
+      "id": "save-core",
+      "name": "Save Core Papers"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/knowledge/topics/papers",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.topic_name, papers: JSON.parse($json.output).categorized_papers.recent, category: \"recent\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 400],
+      "id": "save-recent",
+      "name": "Save Recent Papers"
+    },
+    {
+      "parameters": {
+        "operation": "toFile",
+        "fileName": "={{ $('Input Parameters').item.json.topic_name.replace(/ /g, '_') }}_research_report.json",
+        "options": {
+          "append": false
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [600, 300],
+      "id": "save-report",
+      "name": "Generate Report"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start Research": {
+      "main": [[{"node": "Input Parameters", "type": "main", "index": 0}]]
+    },
+    "Input Parameters": {
+      "main": [[{"node": "Create or Get Topic", "type": "main", "index": 0}]]
+    },
+    "Create or Get Topic": {
+      "main": [[{"node": "Search Papers", "type": "main", "index": 0}]]
+    },
+    "Search Papers": {
+      "main": [[{"node": "Build Citation Network", "type": "main", "index": 0}]]
+    },
+    "Build Citation Network": {
+      "main": [[{"node": "Research Analysis Agent", "type": "main", "index": 0}]]
+    },
+    "Research Analysis Agent": {
+      "main": [
+        [
+          {"node": "Save Foundation Papers", "type": "main", "index": 0},
+          {"node": "Save Core Papers", "type": "main", "index": 0},
+          {"node": "Save Recent Papers", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Save Foundation Papers": {
+      "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+    },
+    "Save Core Papers": {
+      "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+    },
+    "Save Recent Papers": {
+      "main": [[{"node": "Generate Report", "type": "main", "index": 0}]]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [[{"node": "Research Analysis Agent", "type": "ai_languageModel", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "updated-version",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eed024bb5d204d44b22cd35ec2dd369a6de7f278aa734e916f52ff1ff75e4e62"
+  },
+  "id": "6LJLxV15O5Au1pbW",
+  "tags": []
+}

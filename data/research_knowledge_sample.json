@@ -1,0 +1,171 @@
+{
+  "version": "1.0",
+  "created_at": "2025-10-26T10:00:00",
+  "last_updated": "2025-10-26T15:30:00",
+  "topics": {
+    "gnn_recommendation_system": {
+      "topic_name": "GNN Recommendation System",
+      "knowledge_state": {
+        "state": "beginner",
+        "foundation_papers_read": 1,
+        "core_papers_read": 2,
+        "recent_papers_read": 0,
+        "progress_percentage": 25.0
+      },
+      "foundation_papers": [
+        {
+          "id": "attention2017",
+          "title": "Attention Is All You Need",
+          "authors": ["Ashish Vaswani", "Noam Shazeer"],
+          "year": 2017,
+          "venue": "NeurIPS",
+          "citations": 85000,
+          "url": "https://arxiv.org/abs/1706.03762",
+          "abstract": "The dominant sequence transduction models...",
+          "doi": "10.5555/3295222.3295349",
+          "pdf_url": "https://arxiv.org/pdf/1706.03762.pdf",
+          "status": "read",
+          "analysis": {
+            "summary_ko": "트랜스포머 아키텍처를 제안한 획기적인 논문. Self-attention 메커니즘만으로 시퀀스 모델을 구축하여 RNN을 대체했습니다.",
+            "contributions": [
+              "Self-attention 기반 Transformer 아키텍처 제안",
+              "병렬 처리 가능한 모델로 학습 속도 대폭 향상",
+              "기계 번역에서 SOTA 달성"
+            ],
+            "methodology": "Multi-head Self-Attention + Position Encoding",
+            "limitations": "입력 길이 제한, O(n²) 복잡도",
+            "dataset": "WMT 2014 English-German, English-French"
+          },
+          "reading_notes": "2025-10-20에 정독 완료. 코드 재현 성공."
+        },
+        {
+          "id": "gcn2018",
+          "title": "Graph Convolutional Networks",
+          "authors": ["Thomas N. Kipf", "Max Welling"],
+          "year": 2018,
+          "venue": "ICLR",
+          "citations": 25000,
+          "url": "https://arxiv.org/abs/1609.02907",
+          "abstract": "We present a scalable approach for semi-supervised...",
+          "doi": null,
+          "pdf_url": "https://arxiv.org/pdf/1609.02907.pdf",
+          "status": "unread",
+          "analysis": null
+        }
+      ],
+      "core_papers": [
+        {
+          "id": "lightgcn2020",
+          "title": "LightGCN: Simplifying and Powering Graph Convolution Network for Recommendation",
+          "authors": ["Xiangnan He", "Kuan Deng"],
+          "year": 2020,
+          "venue": "SIGIR",
+          "citations": 2500,
+          "url": "https://arxiv.org/abs/2002.02126",
+          "abstract": "Graph Convolution Network (GCN) has become...",
+          "doi": "10.1145/3397271.3401063",
+          "pdf_url": "https://arxiv.org/pdf/2002.02126.pdf",
+          "status": "read",
+          "analysis": {
+            "summary_ko": "추천 시스템에서 GCN의 불필요한 요소를 제거하고 경량화. Feature transformation과 nonlinearity를 제거하여 성능 향상.",
+            "contributions": [
+              "GCN의 핵심만 남긴 경량화 모델",
+              "기존 NGCF 대비 15% 성능 향상",
+              "학습 속도 3배 향상"
+            ],
+            "methodology": "Simplified GCN (layer normalization 제거)",
+            "limitations": "Cold-start 문제 미해결",
+            "dataset": "Gowalla, Yelp2018, Amazon-Book"
+          },
+          "reading_notes": "2025-10-22에 읽음. 실험 재현 중."
+        }
+      ],
+      "recent_papers": [
+        {
+          "id": "contrastgcn2024",
+          "title": "Contrastive Learning for GNN-based Recommendation",
+          "authors": ["Author A", "Author B"],
+          "year": 2024,
+          "venue": "WWW",
+          "citations": 120,
+          "url": "https://example.com/paper",
+          "abstract": "We propose a contrastive learning framework...",
+          "doi": null,
+          "pdf_url": null,
+          "status": "unread",
+          "analysis": {
+            "summary_ko": "Contrastive Learning을 GNN 추천 시스템에 적용. 데이터 증강 기법으로 성능 향상.",
+            "contributions": [
+              "Graph augmentation 기법 제안",
+              "Contrastive loss와 추천 loss 결합",
+              "Sparse 데이터에서 강건성 입증"
+            ],
+            "methodology": "Contrastive Learning + LightGCN",
+            "limitations": "대규모 그래프에서 학습 시간 증가",
+            "dataset": "Amazon-Book, Yelp2018"
+          }
+        }
+      ],
+      "reading_order": [
+        "attention2017",
+        "gcn2018",
+        "lightgcn2020",
+        "contrastgcn2024"
+      ],
+      "last_updated": "2025-10-26T15:30:00",
+      "search_history": [
+        {
+          "searched_at": "2025-10-26T10:00:00",
+          "keyword": "gnn recommendation system",
+          "papers_found": 10,
+          "new_papers": 10
+        },
+        {
+          "searched_at": "2025-10-26T15:00:00",
+          "keyword": "gnn recommendation system",
+          "papers_found": 10,
+          "new_papers": 1
+        }
+      ],
+      "research_gaps": {
+        "common_problems": [
+          "Collaborative filtering의 cold-start 문제",
+          "그래프 sparsity 문제",
+          "확장성(scalability) 문제"
+        ],
+        "unsolved_problems": [
+          "Cold-start 문제 완전 해결 방법 없음",
+          "대규모 그래프(1억+ 노드)에서 실시간 추천 어려움",
+          "설명가능성(explainability) 부족"
+        ],
+        "recent_trends": [
+          "Contrastive Learning 적용 증가",
+          "Transformer + GNN 하이브리드",
+          "Self-supervised learning 접근"
+        ],
+        "potential_research_directions": [
+          "Meta-learning으로 cold-start 해결",
+          "경량화 + 분산 학습으로 scalability 개선",
+          "Attention 기반 설명가능성 추가"
+        ]
+      }
+    },
+    "transformer_recommendation": {
+      "topic_name": "Transformer Recommendation",
+      "knowledge_state": {
+        "state": "experienced",
+        "foundation_papers_read": 5,
+        "core_papers_read": 10,
+        "recent_papers_read": 8,
+        "progress_percentage": 92.0
+      },
+      "foundation_papers": [],
+      "core_papers": [],
+      "recent_papers": [],
+      "reading_order": [],
+      "last_updated": "2025-10-20T10:00:00",
+      "search_history": []
+    }
+  }
+}
+

@@ -255,3 +255,149 @@ class SemanticScholarService:
 
         return results
 
+    @log_execution_time
+    def get_citation_network(
+        self,
+        paper_id: str,
+        max_references: int = 20,
+        max_citations: int = 20,
+        include_references: bool = True,
+        include_citations: bool = True
+    ) -> Dict:
+        """
+        논문의 Citation Network 가져오기 (References + Citations)
+
+        Args:
+            paper_id: Seed 논문 ID
+            max_references: 최대 References 수
+            max_citations: 최대 Citations 수
+            include_references: References 포함 여부
+            include_citations: Citations 포함 여부
+
+        Returns:
+            {
+                "seed_paper": {...},
+                "references": [...],
+                "citations": [...],
+                "total_references": int,
+                "total_citations": int
+            }
+        """
+        try:
+            logger.info(f"🌳 Citation Network 구축 시작: {paper_id}")
+
+            # 1. Seed 논문 정보 가져오기 (References + Citations 포함)
+            fields = [
+                "paperId", "title", "authors", "year", "venue",
+                "citationCount", "url", "abstract", "externalIds",
+                "openAccessPdf"
+            ]
+
+            if include_references:
+                fields.append("references")
+            if include_citations:
+                fields.append("citations")
+
+            url = f"{self.BASE_URL}/paper/{paper_id}"
+            params = {"fields": ",".join(fields)}
+
+            # API 요청 (재시도 로직)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self.session.get(url, params=params, timeout=30)
+
+                    # 429 Rate Limit 처리
+                    if response.status_code == 429:
+                        wait_time = (attempt + 1) * 5  # 5초, 10초, 15초
+                        logger.warning(f"⏳ Rate Limit 도달. {wait_time}초 대기 중... (시도 {attempt + 1}/{max_retries})")
+                        time.sleep(wait_time)
+                        continue
+
+                    response.raise_for_status()
+                    break  # 성공하면 종료
+
+                except requests.exceptions.HTTPError as e:
+                    if attempt == max_retries - 1:  # 마지막 시도
+                        raise
+                    logger.warning(f"Citation Network 요청 실패, 재시도 중... ({attempt + 1}/{max_retries})")
+                    time.sleep(3)
+
+            seed_data = response.json()
+
+            # 2. Seed 논문 변환
+            seed_paper = self._convert_paper_format(seed_data)
+
+            # 3. References 처리
+            references = []
+            total_references = 0
+            if include_references and "references" in seed_data:
+                raw_references = seed_data["references"]
+                total_references = len(raw_references)
+
+                for ref in raw_references[:max_references]:
+                    try:
+                        if ref.get("paperId"):
+                            converted = self._convert_citation_item(ref)
+                            references.append(converted)
+                    except Exception as e:
+                        logger.warning(f"Reference 변환 실패: {e}")
+                        continue
+
+                logger.info(f"✅ References: {len(references)}/{total_references}개")
+
+            # 4. Citations 처리
+            citations = []
+            total_citations = 0
+            if include_citations and "citations" in seed_data:
+                raw_citations = seed_data["citations"]
+                total_citations = len(raw_citations)
+
+                for cit in raw_citations[:max_citations]:
+                    try:
+                        if cit.get("paperId"):
+                            converted = self._convert_citation_item(cit)
+                            citations.append(converted)
+                    except Exception as e:
+                        logger.warning(f"Citation 변환 실패: {e}")
+                        continue
+
+                logger.info(f"✅ Citations: {len(citations)}/{total_citations}개")
+
+            logger.info(f"🎉 Citation Network 구축 완료: Seed 1개 + Ref {len(references)}개 + Cit {len(citations)}개")
+
+            return {
+                "seed_paper": seed_paper,
+                "references": references,
+                "citations": citations,
+                "total_references": total_references,
+                "total_citations": total_citations
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Citation Network 구축 실패: {e}")
+            raise
+
+    def _convert_citation_item(self, item: Dict) -> Dict:
+        """Citation/Reference 아이템을 표준 형식으로 변환"""
+        authors = []
+        for author in item.get("authors", []):
+            if author.get("name"):
+                authors.append(author["name"])
+
+        external_ids = item.get("externalIds", {})
+        doi = external_ids.get("DOI") if external_ids else None
+
+        return {
+            "id": item.get("paperId", ""),
+            "title": item.get("title", ""),
+            "authors": authors,
+            "year": item.get("year"),
+            "venue": item.get("venue", ""),
+            "citations": item.get("citationCount", 0),
+            "url": item.get("url", ""),
+            "abstract": item.get("abstract"),
+            "doi": doi,
+            "pdf_url": None,  # Citation API에서는 제공 안됨
+        }
+

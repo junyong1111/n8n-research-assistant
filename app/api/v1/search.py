@@ -2,7 +2,10 @@
 논문 검색 API 엔드포인트
 """
 from fastapi import APIRouter, HTTPException, status
-from app.models.paper import PaperSearchRequest, PaperSearchResponse, Paper, ErrorResponse
+from app.models.paper import (
+    PaperSearchRequest, PaperSearchResponse, Paper, ErrorResponse,
+    CitationNetworkRequest, CitationNetworkResponse
+)
 from app.services.semantic_scholar import SemanticScholarService
 from app.utils.logger import get_logger
 
@@ -111,6 +114,64 @@ async def get_paper_details(paper_id: str):
             detail={
                 "error": "FETCH_ERROR",
                 "message": "논문 조회 중 오류가 발생했습니다",
+                "details": str(e)
+            }
+        )
+
+
+@router.post(
+    "/search/citation-network",
+    response_model=CitationNetworkResponse,
+    summary="Citation Network 구축",
+    description="논문의 인용 관계망 구축 (References + Citations)"
+)
+async def get_citation_network(request: CitationNetworkRequest):
+    """
+    Citation Network 구축 API
+
+    - **paper_id**: Seed 논문 ID (필수)
+    - **include_references**: References 포함 여부 (기본: True)
+    - **include_citations**: Citations 포함 여부 (기본: True)
+    - **max_references**: 최대 References 수 (기본: 20)
+    - **max_citations**: 최대 Citations 수 (기본: 20)
+
+    Returns:
+        Seed 논문 + References + Citations
+    """
+    try:
+        logger.info(f"🌳 Citation Network 요청: paper_id={request.paper_id}")
+
+        # Semantic Scholar 서비스 초기화
+        service = SemanticScholarService()
+
+        # Citation Network 구축
+        network = service.get_citation_network(
+            paper_id=request.paper_id,
+            max_references=request.max_references,
+            max_citations=request.max_citations,
+            include_references=request.include_references,
+            include_citations=request.include_citations
+        )
+
+        # 응답 생성
+        response = CitationNetworkResponse(
+            seed_paper=Paper(**network["seed_paper"]),
+            references=[Paper(**p) for p in network["references"]],
+            citations=[Paper(**p) for p in network["citations"]],
+            total_references=network["total_references"],
+            total_citations=network["total_citations"]
+        )
+
+        logger.info(f"✅ Citation Network 구축 완료: Ref {len(response.references)}개, Cit {len(response.citations)}개")
+        return response
+
+    except Exception as e:
+        logger.error(f"❌ Citation Network 구축 실패: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "CITATION_NETWORK_ERROR",
+                "message": "Citation Network 구축 중 오류가 발생했습니다",
                 "details": str(e)
             }
         )
