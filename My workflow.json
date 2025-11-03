@@ -73,6 +73,50 @@
     },
     {
       "parameters": {
+        "jsCode": "// Sort papers by citations (descending) and get Top 1\nconst papers = $input.item.json.papers || [];\nconst sorted = papers.sort((a, b) => (b.citations || 0) - (a.citations || 0));\nconst seedPaper = sorted[0];\n\nreturn {\n  seed_paper: seedPaper,\n  all_papers: papers\n};"
+      },
+      "id": "get-seed-paper-node",
+      "name": "Get Seed Paper (Top 1)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1104,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/search/citation-network",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ paper_id: $json.seed_paper.id, max_references: 20, max_citations: 20 }) }}",
+        "options": {}
+      },
+      "id": "build-citation-network-node",
+      "name": "Build Citation Network",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -928,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten citation network into papers array\nconst data = $input.item.json;\nconst allPapers = [];\n\n// Add seed paper\nif (data.seed_paper) {\n  allPapers.push(data.seed_paper);\n}\n\n// Add references\nif (data.references && Array.isArray(data.references)) {\n  allPapers.push(...data.references);\n}\n\n// Add citations\nif (data.citations && Array.isArray(data.citations)) {\n  allPapers.push(...data.citations);\n}\n\nreturn {\n  papers: allPapers,\n  total_papers: allPapers.length\n};"
+      },
+      "id": "flatten-papers-node",
+      "name": "Flatten Citation Network",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        -816
+      ]
+    },
+    {
+      "parameters": {
         "fieldToSplitOut": "papers",
         "options": {}
       },
@@ -81,7 +125,7 @@
       "type": "n8n-nodes-base.itemLists",
       "typeVersion": 3,
       "position": [
-        -1104,
+        -576,
         -816
       ]
     },
@@ -470,11 +514,11 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are an expert research paper analyst.\n\nAnalyze this paper and provide a JSON summary:\n\nPaper ID: {{ $json.paper_id }}\nText (first 20k chars): {{ $json.text.substring(0, 20000) }}\n\nProvide ONLY valid JSON in this format (no markdown, no code blocks):\n{\n  \"paper_id\": \"{{ $json.paper_id }}\",\n  \"summary_ko\": \"3-sentence Korean summary\",\n  \"key_contributions\": [\"contribution 1\", \"contribution 2\", \"contribution 3\"],\n  \"methodology\": \"brief methodology description\",\n  \"main_results\": \"key results\",\n  \"limitations\": \"limitations\",\n  \"dataset\": \"dataset used\"\n}",
+        "text": "=You are an expert research paper analyst for a top-tier research lab.\n\nAnalyze this paper in depth:\n\nPaper ID: {{ $json.paper_id }}\nTitle: {{ $('Split Papers').item.json.title }}\nYear: {{ $('Split Papers').item.json.year }}\nText (first 20k chars): {{ $json.text.substring(0, 20000) }}\n\nProvide ONLY valid JSON in this format (no markdown, no code blocks):\n{\n  \"paper_id\": \"{{ $json.paper_id }}\",\n  \"summary_ko\": \"3-sentence Korean summary\",\n  \"problem_statement\": \"What problem does this paper address?\",\n  \"proposed_method\": \"What is the main approach/method proposed?\",\n  \"key_contributions\": [\"contribution 1\", \"contribution 2\", \"contribution 3\"],\n  \"methodology\": \"Technical details of the method\",\n  \"main_results\": \"Key experimental results and performance metrics\",\n  \"limitations\": \"What are the main limitations? What problems remain unsolved? (This is critical for research gap analysis!)\",\n  \"datasets\": [\"dataset 1\", \"dataset 2\"],\n  \"performance_metrics\": {\"metric_name\": \"value\"},\n  \"future_work\": \"What future directions are suggested?\"\n}",
         "messages": {
           "messageValues": [
             {
-              "message": "=You are a research paper analyst. Always respond with valid JSON only, no markdown formatting."
+              "message": "=You are a research paper analyst for a top-tier research lab. Focus on identifying limitations and unsolved problems for research gap analysis. Always respond with valid JSON only, no markdown formatting."
             }
           ]
         },
@@ -487,7 +531,7 @@
         -928
       ],
       "id": "5a6ea22d-0c03-41fb-8a42-5ca1100b56ec",
-      "name": "Basic LLM Chain"
+      "name": "Enhanced LLM Analysis"
     },
     {
       "parameters": {
@@ -498,6 +542,96 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [-112, -928]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/knowledge/topics",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.keyword, knowledge_state: 'beginner' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "create-topic-node",
+      "name": "Create or Get Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [336, -928]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/api/v1/knowledge/classify-and-add",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ topic_name: $('Input Parameters').item.json.keyword, paper: { id: $('Extract PDF Text').item.json.paper_id, title: $('Split Papers').item.json.title, year: $('Split Papers').item.json.year, citations: $('Split Papers').item.json.citations, authors: $('Split Papers').item.json.authors, venue: $('Split Papers').item.json.venue, url: $('Split Papers').item.json.url, abstract: $('Split Papers').item.json.abstract } }) }}",
+        "options": {}
+      },
+      "id": "classify-add-node",
+      "name": "Classify & Add to Topic",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [560, -928]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-node",
+      "name": "Wait for All Papers",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [784, -928]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a research strategy advisor for a top-tier research lab.\n\nAnalyze all papers in this research topic and identify research gaps.\n\nTopic: {{ $('Input Parameters').first().json.keyword }}\n\nAll paper summaries are stored in data/paper_summaries/.\n\nProvide a comprehensive research gap analysis in JSON format:\n{\n  \"topic\": \"{{ $('Input Parameters').first().json.keyword }}\",\n  \"total_papers_analyzed\": {{ $('Wait for All Papers').first().json.length }},\n  \"trends\": {\n    \"2020-2022\": \"Major trends in this period\",\n    \"2023-2025\": \"Recent trends and new approaches\"\n  },\n  \"common_limitations\": [\n    \"Limitation 1 that appears in multiple papers\",\n    \"Limitation 2\",\n    \"Limitation 3\"\n  ],\n  \"research_gaps\": [\n    \"Unsolved problem 1\",\n    \"Unsolved problem 2\",\n    \"Unsolved problem 3\"\n  ],\n  \"potential_research_directions\": [\n    \"Direction 1: Why and how\",\n    \"Direction 2: Why and how\",\n    \"Direction 3: Why and how\"\n  ],\n  \"recommended_papers_to_read\": [\n    {\"paper_id\": \"id\", \"reason\": \"why this is important\"}\n  ]\n}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a research strategy advisor. Analyze all papers comprehensively and identify research gaps, trends, and future directions. Always respond with valid JSON only, no markdown formatting."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        1008,
+        -928
+      ],
+      "id": "research-gap-analysis-node",
+      "name": "Analyze Research Gaps"
+    },
+    {
+      "parameters": {
+        "jsCode": "const llmOutput = $input.item.json.output || $input.item.json.text || $input.item.json.response || '';\nconst cleanJson = llmOutput.replace(/```json/g, '').replace(/```/g, '').trim();\n\nreturn {\n  research_gap_analysis: cleanJson\n};"
+      },
+      "id": "clean-gap-json-node",
+      "name": "Clean Gap JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1232, -928]
+    },
+    {
+      "parameters": {
+        "url": "=http://api:8000/api/v1/knowledge/topics/{{ $('Input Parameters').first().json.keyword }}/report?save=true",
+        "options": {}
+      },
+      "id": "generate-report-node",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1456, -928]
     }
   ],
   "pinData": {},
@@ -525,6 +659,39 @@
       ]
     },
     "Search Papers": {
+      "main": [
+        [
+          {
+            "node": "Get Seed Paper (Top 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Seed Paper (Top 1)": {
+      "main": [
+        [
+          {
+            "node": "Build Citation Network",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Citation Network": {
+      "main": [
+        [
+          {
+            "node": "Flatten Citation Network",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Citation Network": {
       "main": [
         [
           {
@@ -695,7 +862,7 @@
       "main": [
         [
           {
-            "node": "Basic LLM Chain",
+            "node": "Enhanced LLM Analysis",
             "type": "main",
             "index": 0
           }
@@ -706,14 +873,14 @@
       "ai_languageModel": [
         [
           {
-            "node": "Basic LLM Chain",
+            "node": "Enhanced LLM Analysis",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Basic LLM Chain": {
+    "Enhanced LLM Analysis": {
       "main": [
         [
           {
@@ -729,6 +896,81 @@
         [
           {
             "node": "Save Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Summary": {
+      "main": [
+        [
+          {
+            "node": "Create or Get Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or Get Topic": {
+      "main": [
+        [
+          {
+            "node": "Classify & Add to Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify & Add to Topic": {
+      "main": [
+        [
+          {
+            "node": "Wait for All Papers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for All Papers": {
+      "main": [
+        [
+          {
+            "node": "Analyze Research Gaps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Research Gaps": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenAI Chat Model",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ],
+      "main": [
+        [
+          {
+            "node": "Clean Gap JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Gap JSON": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
             "type": "main",
             "index": 0
           }

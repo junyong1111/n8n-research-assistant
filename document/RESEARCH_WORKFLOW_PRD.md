@@ -5,10 +5,66 @@
 **목표**: 세계 최고 수준 연구실의 연구원처럼 논문을 체계적으로 조사하고 분석하는 완전 자동화 시스템 구축
 
 **핵심 철학**:
+- **Top-Tier 연구원 워크플로우 구현**: Seed 논문 → Citation Network → Research Gap 분석
 - 연구원의 실제 사고 과정을 n8n 워크플로우로 시각화
-- 지식 상태(초보 → 전문가)에 따라 검색 깊이 조절
 - PDF를 끝까지 찾는 집요함 (5단계 폭포수 검색)
 - 전문(Full-text) 기반 LLM 분석
+- **Research Gap 자동 탐지**: 한계점 취합 → 트렌드 분석 → 연구 방향 제안
+
+---
+
+## 🎯 Main Workflow (Top-Tier Researcher)
+
+```
+[입력] keyword: "GNN recommendation system"
+  ↓
+[Step 1] Seed 논문 찾기
+  → 인용수 Top 1 논문 (예: LightGCN)
+  ↓
+[Step 2] Citation Network 구축
+  → References: Seed가 인용한 논문 20개
+  → Citations: Seed를 인용한 논문 20개
+  → 총 41개 논문 (Seed + 20 + 20)
+  ↓
+[Step 3] 중복 제거 & 캐시 비교
+  → papers_cache.json과 비교
+  → 새 논문만 필터링
+  ↓
+[Step 4] 논문별 심층 분석 (LLM Agent)
+  각 논문:
+  - 요약
+  - 문제 정의
+  - 제안 방법
+  - 한계점 ⭐ (Research Gap 핵심!)
+  - 사용 데이터셋
+  - 성능
+  ↓
+[Step 5] Research Gap 분석 (LLM Agent)
+  전체 논문을 보고:
+  - 현재 연구의 주요 트렌드는?
+  - 대부분의 논문이 공통적으로 해결 못한 문제는?
+  - 2024-2025년 새로운 접근법은?
+  - 내가 기여할 수 있는 부분은?
+  ↓
+[Step 6] 구조화된 리포트 생성
+  research_report.json:
+  {
+    "topic": "GNN Recommendation System",
+    "seed_paper": {...},
+    "citation_tree": [...],
+    "trends": {
+      "2020-2022": "GCN 기반 경량화",
+      "2023-2025": "Contrastive Learning + GNN"
+    },
+    "research_gaps": [
+      "Cold-start 문제 여전히 미해결",
+      "설명가능성(Explainability) 부족",
+      "대규모 그래프 scalability 이슈"
+    ],
+    "recommended_papers_to_read": [top 5],
+    "potential_research_directions": [...]
+  }
+```
 
 ---
 
@@ -130,23 +186,32 @@ app/
 
 ### Workflow (n8n)
 ```
-현재 구현된 워크플로우:
+현재 구현된 워크플로우 (Top-Tier Researcher):
 1. Start Research
 2. Input Parameters (키워드, 연도, 개수)
 3. Search Papers
-4. Split Papers (각 논문 개별 처리)
-5. [1] Try Semantic Scholar
-6. PDF Found? → True: Extract PDF Text
+4. Get Seed Paper (Top 1) ⭐ NEW!
+5. Build Citation Network (Seed + 20 References + 20 Citations) ⭐ NEW!
+6. Flatten Citation Network (41개 논문) ⭐ NEW!
+7. Split Papers (각 논문 개별 처리)
+8. [1] Try Semantic Scholar
+9. PDF Found? → True: Extract PDF Text
               → False: [2] Try arXiv
-7. [2] Try arXiv → PDF Found? → True/False
-8. [3] Try Unpaywall → PDF Found? → True/False
-9. [4] Try Google Scholar → PDF Found? → True/False
-10. [5] Try Google Search → PDF Found? → True/False
-11. Give Up (No PDF)
-12. Extract PDF Text
-13. Basic LLM Chain (OpenAI)
-14. Clean JSON (마크다운 제거)
-15. Save Summary
+10. [2] Try arXiv → PDF Found? → True/False
+11. [3] Try Unpaywall → PDF Found? → True/False
+12. [4] Try Google Scholar → PDF Found? → True/False
+13. [5] Try Google Search → PDF Found? → True/False
+14. Give Up (No PDF)
+15. Extract PDF Text
+16. Enhanced LLM Analysis (문제/방법/한계점/데이터셋/성능/향후연구) ⭐ ENHANCED!
+17. Clean JSON (마크다운 제거)
+18. Save Summary
+19. Create or Get Topic (주제 생성/조회)
+20. Classify & Add to Topic (자동 분류 및 저장)
+21. Wait for All Papers (모든 논문 처리 대기)
+22. Analyze Research Gaps (트렌드/한계점/연구갭/연구방향) ⭐ NEW!
+23. Clean Gap JSON
+24. Generate Report (마크다운 보고서 생성)
 ```
 
 ---
@@ -186,13 +251,13 @@ app/
 - [x] JSON 형식 강제 및 마크다운 제거
 - [x] 요약 저장 API (`POST /papers/summary`)
 
-### Phase 5: 지식 베이스 🚧 **진행 중**
+### Phase 5: 지식 베이스 ✅ **완료**
 - [x] 주제 생성/조회 API
 - [x] 논문 추가 API
 - [x] 논문 읽음 표시 API
-- [ ] **n8n 워크플로우 통합** (다음 단계!)
-- [ ] Foundation/Core/Recent 자동 분류
-- [ ] 지식 상태 자동 업데이트
+- [x] **n8n 워크플로우 통합** ✅
+- [x] Foundation/Core/Recent 자동 분류 ✅
+- [x] 지식 상태 자동 업데이트 ✅
 
 ### Phase 6: Citation Network 📝 **대기 중**
 - [x] Citation Network API (`POST /search/citation-network`)
@@ -200,30 +265,144 @@ app/
 - [ ] Backward/Forward Citation 분석
 - [ ] 논문 분류 자동화
 
-### Phase 7: Research Gap 분석 📝 **대기 중**
-- [ ] 여러 논문 한계점 취합
-- [ ] LLM Agent를 통한 연구 갭 탐지
-- [ ] 연구 방향 제안
-- [ ] 종합 보고서 생성
+### Phase 6: 보고서 생성 ✅ **완료**
+- [x] 마크다운 보고서 생성 서비스 (`ReportGenerator`)
+- [x] 주제별 보고서 조회 API (`GET /knowledge/topics/{topic_name}/report`)
+- [x] n8n 워크플로우에 보고서 생성 노드 추가 (`Wait for All Papers` + `Generate Report`)
+- [x] `reports/` 디렉토리 자동 생성
+
+### Phase 7: Top-Tier Researcher Workflow ✅ **완료!**
+**목표**: Seed 논문 기반 Citation Network → Research Gap 분석 → 구조화된 리포트
+
+#### 7.1 Seed 논문 선정 ✅
+- [x] 키워드 검색 후 인용수 Top 1 선정 (Code 노드)
+- [x] Seed 논문 상세 정보 저장
+
+#### 7.2 Citation Network 구축 ✅
+- [x] Citation Network API (`POST /search/citation-network`)
+- [x] n8n 워크플로우 통합 (`Build Citation Network` 노드)
+- [x] References (Seed가 인용한 논문) 20개 수집
+- [x] Citations (Seed를 인용한 논문) 20개 수집
+- [x] Flatten 로직 (Seed + References + Citations)
+
+#### 7.3 논문별 심층 분석 (Enhanced) ✅
+- [x] LLM Agent 프롬프트 강화 (`Enhanced LLM Analysis`):
+  - 문제 정의 (Problem Statement)
+  - 제안 방법 (Proposed Method)
+  - **한계점 (Limitations)** ⭐
+  - 사용 데이터셋 (Datasets)
+  - 성능 지표 (Performance Metrics)
+  - 향후 연구 (Future Work)
+
+#### 7.4 Research Gap 분석 (LLM Agent) ✅
+- [x] 전체 논문 한계점 취합 (`Analyze Research Gaps` 노드)
+- [x] 시간대별 트렌드 분석 (2020-2022, 2023-2025)
+- [x] 공통 미해결 문제 식별
+- [x] 연구 방향 제안
+
+#### 7.5 구조화된 리포트 생성 ✅
+- [x] Research Gap JSON 생성:
+  - `topic`: 주제명
+  - `total_papers_analyzed`: 분석 논문 수
+  - `trends`: 시간대별 트렌드
+  - `common_limitations`: 공통 한계점
+  - `research_gaps`: 미해결 문제 목록
+  - `recommended_papers_to_read`: Top 5 추천
+  - `potential_research_directions`: 연구 방향 제안
+- [x] 마크다운 보고서 생성 (기존 `Generate Report` 활용)
 
 ---
 
 ## 🎯 다음 단계 (Next Steps)
 
-### 우선순위 1: 지식 베이스 통합 🔥
+### 우선순위 1: Top-Tier Researcher Workflow 구현 🔥 **최우선!**
+**목표**: Seed 논문 → Citation Network → Research Gap 분석 → 구조화된 리포트
+
+**구현 계획**:
+1. **Seed 논문 선정 로직**
+   - `Search Papers` 결과에서 인용수 Top 1 선택
+   - n8n: `Sort` 노드 + `Limit` 노드
+
+2. **Citation Network 통합**
+   - n8n: `Build Citation Network` 노드 추가
+   - API: 기존 `POST /search/citation-network` 활용
+   - References 20개 + Citations 20개 수집
+
+3. **중복 제거 & 캐시 비교**
+   - n8n: `Filter New Papers` 노드
+   - `papers_cache.json`과 비교하여 새 논문만 처리
+
+4. **LLM 프롬프트 강화**
+   - 기존 요약 → **심층 분석**으로 변경
+   - 문제 정의, 제안 방법, **한계점**, 데이터셋, 성능 추가
+
+5. **Research Gap 분석 Agent**
+   - 새 노드: `Analyze Research Gaps`
+   - 전체 논문의 한계점을 LLM에 입력
+   - 트렌드, 미해결 문제, 연구 방향 도출
+
+6. **구조화된 JSON 리포트**
+   - `research_report.json` 생성
+   - 마크다운 보고서에 Research Gap 섹션 추가
+
+**예상 워크플로우**:
+```
+Search Papers → Sort by Citations → Get Top 1 (Seed)
+  ↓
+Build Citation Network (41 papers)
+  ↓
+Filter New Papers (캐시 비교)
+  ↓
+Split Papers → PDF 검색 (5단계) → Extract Text
+  ↓
+Enhanced LLM Analysis (문제/방법/한계점/데이터셋/성능)
+  ↓
+Save to Knowledge Base
+  ↓
+Wait for All Papers
+  ↓
+Analyze Research Gaps (LLM Agent)
+  ↓
+Generate Structured Report (JSON + Markdown)
+```
+
+---
+
+### ~~우선순위 1: 지식 베이스 통합~~ ✅ **완료!**
 **목표**: 요약된 논문을 자동으로 주제별로 분류하고 저장
 
-**구현 내용**:
-1. `Save Summary` 이후 노드 추가:
-   - `Create or Get Topic` (주제 생성/조회)
-   - `Add Paper to Topic` (논문 추가)
-   - `Classify Paper` (Foundation/Core/Recent 분류)
-2. 분류 로직:
-   - 논문 연도 기반 (예: 2020년 이전 → Foundation)
-   - 인용수 기반 (예: 1000+ → Core)
-   - 최신 논문 (예: 2024-2025 → Recent)
+**구현 완료**:
+1. ✅ `Save Summary` 이후 노드 추가:
+   - ✅ `Create or Get Topic` (주제 생성/조회)
+   - ✅ `Classify & Add to Topic` (자동 분류 및 추가)
+2. ✅ 분류 로직:
+   - 최신 논문 (2023-2025) → **Recent**
+   - 기초 논문 (10년 이상 + 인용수 500+) → **Foundation**
+   - 핵심 논문 (5년 이상 + 인용수 100+) → **Foundation**
+   - 그 외 → **Core**
+3. ✅ API 엔드포인트: `POST /api/v1/knowledge/classify-and-add`
 
-### 우선순위 2: Citation Network 통합
+### ~~우선순위 2: 보고서 생성 시스템~~ ✅ **완료!**
+**목표**: 수집된 논문을 읽기 쉬운 마크다운 보고서로 자동 생성
+
+**구현 완료**:
+1. ✅ `ReportGenerator` 서비스 클래스 생성
+   - ✅ `research_knowledge.json` 파싱
+   - ✅ `paper_summaries/` 통합
+   - ✅ 마크다운 템플릿 적용
+2. ✅ API 엔드포인트: `GET /knowledge/topics/{topic_name}/report`
+3. ✅ n8n 노드: `Wait for All Papers` + `Generate Report`
+4. ✅ 보고서 저장: `reports/{topic_name}_{timestamp}.md` + `{topic_name}_latest.md`
+
+**보고서 구조**:
+- 📊 요약 (논문 수, 카테고리별 분포, 지식 상태)
+- 🏛️ Foundation Papers (기초 논문)
+- 🔬 Core Papers (핵심 논문)
+- 🚀 Recent Papers (최신 논문)
+- 📝 각 논문의 LLM 요약 포함 (한국어 요약, 핵심 기여, 방법론, 결과, 한계점, 데이터셋)
+- 📝 메타데이터 (생성일, 도구, 데이터 소스)
+
+### 우선순위 3: Citation Network 통합
 **목표**: Seed 논문의 참고문헌 및 인용 논문 자동 수집
 
 **구현 내용**:
@@ -232,7 +411,7 @@ app/
 3. Forward Citations → Recent Papers
 4. 각 논문에 대해 PDF 검색 및 요약 반복
 
-### 우선순위 3: 지식 상태 기반 검색
+### 우선순위 4: 지식 상태 기반 검색
 **목표**: 사용자의 지식 수준에 따라 검색 깊이 조절
 
 **구현 내용**:

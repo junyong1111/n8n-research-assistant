@@ -48,15 +48,26 @@ Give Up (No PDF) ❌
 
 **각 단계마다 If 노드**로 성공 여부를 확인하고, 실패하면 다음 소스를 시도합니다!
 
-### 3️⃣ 분석 단계 (PDF 찾았을 때만)
+### 3️⃣ 분석 및 저장 단계 (PDF 찾았을 때만)
 
 ```
 Extract PDF Text
   ↓
-Call OpenAI (GPT-4o-mini)
+Basic LLM Chain (OpenAI GPT-4o-mini)
+  ↓
+Clean JSON (마크다운 제거)
   ↓
 Save Summary
+  ↓
+Create or Get Topic (주제 생성/조회) ✅ NEW!
+  ↓
+Classify & Add to Topic (자동 분류 및 저장) ✅ NEW!
 ```
+
+**새로 추가된 기능**:
+- 논문을 자동으로 **Foundation/Core/Recent**로 분류
+- 주제별 지식 베이스에 저장 (`data/research_knowledge.json`)
+- 지식 상태 자동 업데이트
 
 ---
 
@@ -323,11 +334,67 @@ Start → Input → Search → Split
 
 ---
 
+## 🆕 새로 추가된 노드 (Phase 5)
+
+### Create or Get Topic
+
+**HTTP Request 노드**
+- Method: `POST`
+- URL: `http://api:8000/api/v1/knowledge/topics`
+- Body (JSON):
+```json
+{
+  "topic_name": "{{ $('Input Parameters').item.json.keyword }}",
+  "knowledge_state": "beginner"
+}
+```
+- Options → Response:
+  - ✅ **Never Error** (이미 존재하면 그대로 반환)
+
+**역할**: 주제가 없으면 생성하고, 있으면 조회합니다.
+
+---
+
+### Classify & Add to Topic
+
+**HTTP Request 노드**
+- Method: `POST`
+- URL: `http://api:8000/api/v1/knowledge/classify-and-add`
+- Body (JSON):
+```json
+{
+  "topic_name": "{{ $('Input Parameters').item.json.keyword }}",
+  "paper": {
+    "id": "{{ $('Extract PDF Text').item.json.paper_id }}",
+    "title": "{{ $('Split Papers').item.json.title }}",
+    "year": {{ $('Split Papers').item.json.year }},
+    "citations": {{ $('Split Papers').item.json.citations }},
+    "authors": {{ $('Split Papers').item.json.authors }},
+    "venue": "{{ $('Split Papers').item.json.venue }}",
+    "url": "{{ $('Split Papers').item.json.url }}",
+    "abstract": "{{ $('Split Papers').item.json.abstract }}"
+  }
+}
+```
+
+**역할**:
+1. 논문을 자동으로 분류 (Foundation/Core/Recent)
+2. 주제별 지식 베이스에 저장
+3. 지식 상태 업데이트
+
+**분류 기준**:
+- **Recent**: 2023-2025년 논문
+- **Foundation**: 10년 이상 + 인용수 500+ 또는 5년 이상 + 인용수 100+
+- **Core**: 그 외
+
+---
+
 ## 📚 추가 자료
 
 - [n8n 공식 문서](https://docs.n8n.io)
 - [Semantic Scholar API](https://api.semanticscholar.org)
 - [OpenAI API 문서](https://platform.openai.com/docs)
+- [RESEARCH_WORKFLOW_PRD.md](document/RESEARCH_WORKFLOW_PRD.md) - 전체 시스템 PRD
 
 ---
 
